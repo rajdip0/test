@@ -1,6 +1,36 @@
 version: "2"
 
 services:
+
+  certbot:
+    image: certbot/certbot:latest
+    volumes:
+       - ./certbot/conf/:/etc/letsencrypt
+       - ./certbot/logs/:/var/log/letsencrypt
+       - ./certbot/data:/var/www/certbot
+    depends_on:
+      - nginx
+    networks:
+      - saleor-backend-tier      
+    command: certonly --webroot --webroot-path=/usr/share/nginx/html/letsencrypt --email rajdipm65@gmail.com --agree-tos --no-eff-email --staging -d klickfresh.com  -d www.klickfresh.com
+   
+  nginx:
+    image: nginx:latest
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./conf.d:/etc/nginx/conf.d/
+      - ./dhparam:/etc/nginx/dhparam
+      - ./certbot/conf/:/etc/nginx/ssl/
+      - ./certbot/data:/var/www/certbot
+
+    depends_on:
+      - api
+      - api2
+    restart: "on-failure"
+    networks:
+      - saleor-backend-tier  
   api:
     ports:
       - 8000:8000
@@ -55,43 +85,6 @@ services:
       - JAEGER_AGENT_HOST=jaeger
       - STOREFRONT_URL=http://localhost:3000/
       - DASHBOARD_URL=http://localhost:9000/
-
-
-  # certbot:
-  #   image: certbot/certbot
-  #   container_name: certbot
-  #   volumes:
-  #      - ./certbot/conf/:/etc/letsencrypt
-  #      - ./certbot/logs/:/var/log/letsencrypt
-  #      - ./certbot/data:/usr/share/nginx/html/letsencrypt
-  #   depends_on:
-  #     - nginx
-  #   networks:
-  #     - saleor-backend-tier      
-  #   command: certonly --webroot --webroot-path=/usr/share/nginx/html/letsencrypt --email rajdipm65@gmail.com --agree-tos --no-eff-email --staging -d klickfresh.com  -d www.klickfresh.com
-   
-  nginx:
-    container_name: nginx
-    build:
-      context: ./nginx
-      args:
-        - CERTBOT_EMAIL=rajdipm65@gmail.com
-        - DOMAIN_LIST=klickfresh.com,www.klickfresh.com
-    ports:
-      - 80:80
-      - 443:443
-    # volumes:
-    #   - ./conf.d:/etc/nginx/conf.d/
-    #   - ./dhparam:/etc/nginx/dhparam
-    #   - ./certbot/conf/:/etc/nginx/ssl/
-    #   - ./certbot/data:/usr/share/nginx/html/letsencrypt
-
-    depends_on:
-      - api
-      - api2
-    restart: "on-failure"
-    networks:
-      - saleor-backend-tier  
 
   db:
     image: library/postgres:11.1-alpine
