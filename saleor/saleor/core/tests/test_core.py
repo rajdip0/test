@@ -11,8 +11,7 @@ from django.test import RequestFactory, override_settings
 
 from ...account.models import Address, User
 from ...account.utils import create_superuser
-from ...channel.models import Channel
-from ...discount.models import Sale, SaleChannelListing, Voucher, VoucherChannelListing
+from ...discount.models import Sale, Voucher
 from ...giftcard.models import GiftCard
 from ...order.models import Order
 from ...product.models import ProductImage, ProductType
@@ -113,23 +112,6 @@ def test_create_shipping_zones(db):
     assert ShippingZone.objects.all().count() == 5
 
 
-def test_create_channels(db):
-    assert Channel.objects.all().count() == 0
-    for _ in random_data.create_channels():
-        pass
-    assert Channel.objects.all().count() == 2
-    assert Channel.objects.get(slug="channel-pln")
-
-
-@override_settings(DEFAULT_CHANNEL_SLUG="test-slug")
-def test_create_channels_with_default_channel_slug(db):
-    assert Channel.objects.all().count() == 0
-    for _ in random_data.create_channels():
-        pass
-    assert Channel.objects.all().count() == 2
-    assert Channel.objects.get(slug="test-slug")
-
-
 def test_create_fake_user(db):
     assert User.objects.all().count() == 0
     random_data.create_fake_user()
@@ -156,15 +138,9 @@ def test_create_fake_order(db, monkeypatch, image, media_root, warehouse):
     monkeypatch.setattr(
         "saleor.core.utils.random_data.get_image", Mock(return_value=image)
     )
-    for _ in random_data.create_channels():
-        pass
     for _ in random_data.create_shipping_zones():
         pass
     for _ in random_data.create_users(3):
-        pass
-    for msg in random_data.create_page_type():
-        pass
-    for msg in random_data.create_pages():
         pass
     random_data.create_products_by_schema("/", False)
     how_many = 2
@@ -175,25 +151,16 @@ def test_create_fake_order(db, monkeypatch, image, media_root, warehouse):
 
 def test_create_product_sales(db):
     how_many = 5
-    channel_count = 0
-    for _ in random_data.create_channels():
-        channel_count += 1
     for _ in random_data.create_product_sales(how_many):
         pass
-    assert Sale.objects.all().count() == how_many
-    assert SaleChannelListing.objects.all().count() == how_many * channel_count
+    assert Sale.objects.all().count() == 5
 
 
 def test_create_vouchers(db):
-    voucher_count = 3
-    channel_count = 0
-    for _ in random_data.create_channels():
-        channel_count += 1
     assert Voucher.objects.all().count() == 0
     for _ in random_data.create_vouchers():
         pass
-    assert Voucher.objects.all().count() == voucher_count
-    assert VoucherChannelListing.objects.all().count() == voucher_count * channel_count
+    assert Voucher.objects.all().count() == 3
 
 
 def test_create_gift_card(db):

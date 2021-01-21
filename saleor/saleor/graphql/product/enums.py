@@ -1,9 +1,21 @@
 import graphene
 
+from ...product import AttributeInputType
+from ..core.enums import to_enum
 
-class ProductAttributeType(graphene.Enum):
+AttributeInputTypeEnum = to_enum(AttributeInputType)
+
+
+class AttributeTypeEnum(graphene.Enum):
     PRODUCT = "PRODUCT"
     VARIANT = "VARIANT"
+
+
+class AttributeValueType(graphene.Enum):
+    COLOR = "COLOR"
+    GRADIENT = "GRADIENT"
+    URL = "URL"
+    STRING = "STRING"
 
 
 class StockAvailability(graphene.Enum):
@@ -24,9 +36,3 @@ class ProductTypeConfigurable(graphene.Enum):
 class ProductTypeEnum(graphene.Enum):
     DIGITAL = "digital"
     SHIPPABLE = "shippable"
-
-
-class VariantAttributeScope(graphene.Enum):
-    ALL = "all"
-    VARIANT_SELECTION = "variant_selection"
-    NOT_VARIANT_SELECTION = "not_variant_selection"

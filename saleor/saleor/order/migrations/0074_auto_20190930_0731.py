@@ -2,7 +2,6 @@
 
 import django.contrib.postgres.fields.jsonb
 from django.db import migrations
-
 import saleor.core.utils.json_serializer
 
 

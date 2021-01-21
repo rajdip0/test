@@ -6,7 +6,7 @@ from ....tests.utils import get_graphql_content
 
 @pytest.mark.django_db
 @pytest.mark.count_queries(autouse=False)
-def test_product_details(product_with_image, api_client, count_queries, channel_USD):
+def test_product_details(product_with_image, api_client, count_queries):
     query = """
         fragment BasicProductFields on Product {
           id
@@ -24,6 +24,8 @@ def test_product_details(product_with_image, api_client, count_queries, channel_
           id
           sku
           name
+          stockQuantity
+          isAvailable
           pricing {
             discountLocalCurrency {
               currency
@@ -71,14 +73,14 @@ def test_product_details(product_with_image, api_client, count_queries, channel_
           }
         }
 
-        query ProductDetails($id: ID!, $channel: String) {
-          product(id: $id, channel: $channel) {
+        query ProductDetails($id: ID!) {
+          product(id: $id) {
             ...BasicProductFields
             description
             category {
               id
               name
-              products(first: 4, channel: $channel) {
+              products(first: 4) {
                 edges {
                   node {
                     ...BasicProductFields
@@ -158,21 +160,16 @@ def test_product_details(product_with_image, api_client, count_queries, channel_
     image = product_with_image.get_first_image()
     image.variant_images.create(variant=variant)
 
-    variables = {
-        "id": Node.to_global_id("Product", product.pk),
-        "channel": channel_USD.slug,
-    }
+    variables = {"id": Node.to_global_id("Product", product.pk)}
     get_graphql_content(api_client.post_graphql(query, variables))
 
 
 @pytest.mark.django_db
 @pytest.mark.count_queries(autouse=False)
-def test_retrieve_product_attributes(
-    product_list, api_client, count_queries, channel_USD
-):
+def test_retrieve_product_attributes(product_list, api_client, count_queries):
     query = """
-        query($sortBy: ProductOrder, $channel: String) {
-          products(first: 10, sortBy: $sortBy, channel: $channel) {
+        query($sortBy: ProductOrder) {
+          products(first: 10, sortBy: $sortBy) {
             edges {
               node {
                 id
@@ -187,98 +184,18 @@ def test_retrieve_product_attributes(
         }
     """
 
-    variables = {"channel": channel_USD.slug}
+    variables = {}
     get_graphql_content(api_client.post_graphql(query, variables))
 
 
 @pytest.mark.django_db
 @pytest.mark.count_queries(autouse=False)
-def test_retrieve_channel_listings(
-    product_list_with_many_channels,
-    staff_api_client,
-    count_queries,
-    permission_manage_products,
-    channel_USD,
-):
-    query = """
-        query($channel: String) {
-          products(first: 10, channel: $channel) {
-            edges {
-              node {
-                id
-                channelListings {
-                  publicationDate
-                  isPublished
-                  channel{
-                    slug
-                    currencyCode
-                    name
-                    isActive
-                  }
-                  visibleInListings
-                  discountedPrice{
-                    amount
-                    currency
-                  }
-                  purchaseCost{
-                    start{
-                      amount
-                    }
-                    stop{
-                      amount
-                    }
-                  }
-                  margin{
-                    start
-                    stop
-                  }
-                  isAvailableForPurchase
-                  availableForPurchase
-                  pricing {
-                    priceRangeUndiscounted {
-                      start {
-                        gross {
-                          amount
-                          currency
-                        }
-                      }
-                      stop {
-                        gross {
-                          amount
-                          currency
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-    """
-
-    variables = {"channel": channel_USD.slug}
-    get_graphql_content(
-        staff_api_client.post_graphql(
-            query,
-            variables,
-            permissions=(permission_manage_products,),
-            check_no_permissions=False,
-        )
-    )
-
-
-@pytest.mark.django_db
-@pytest.mark.count_queries(autouse=False)
 def test_retrive_products_with_product_types_and_attributes(
-    product_list,
-    api_client,
-    count_queries,
-    channel_USD,
+    product_list, api_client, count_queries
 ):
     query = """
-        query($channel: String) {
-          products(first: 10, channel: $channel) {
+        {
+          products(first: 10) {
             edges {
               node {
                 id
@@ -296,5 +213,5 @@ def test_retrive_products_with_product_types_and_attributes(
           }
         }
     """
-    variables = {"channel": channel_USD.slug}
+    variables = {}
     get_graphql_content(api_client.post_graphql(query, variables))

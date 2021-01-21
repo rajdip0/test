@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     # flake8: noqa
     from ...checkout.models import Checkout, CheckoutLine
     from ...order.models import Order
-    from ...product.models import Product, ProductType, ProductVariant
+    from ...product.models import Product, ProductVariant, ProductType
 
 logger = logging.getLogger(__name__)
 
@@ -100,9 +100,7 @@ def api_post_request(
 
 
 def api_get_request(
-    url: str,
-    username_or_account: str,
-    password_or_license: str,
+    url: str, username_or_account: str, password_or_license: str,
 ):
     response = None
     try:
@@ -207,18 +205,15 @@ def append_line_to_data(
     )
 
 
-def append_shipping_to_data(data: List[Dict], shipping_method, channel_id):
+def append_shipping_to_data(data: List[Dict], shipping_method):
     charge_taxes_on_shipping = (
         Site.objects.get_current().settings.charge_taxes_on_shipping
     )
     if charge_taxes_on_shipping and shipping_method:
-        shipping_price = shipping_method.channel_listings.get(
-            channel_id=channel_id
-        ).price
         append_line_to_data(
             data,
             quantity=1,
-            amount=shipping_price.amount,
+            amount=shipping_method.price.amount,
             tax_code=COMMON_CARRIER_CODE,
             item_code="Shipping",
         )
@@ -233,12 +228,9 @@ def get_checkout_lines_data(
         "variant__product__collections",
         "variant__product__product_type",
     ).filter(variant__product__charge_taxes=True)
-    channel = checkout.channel
     for line in lines:
         name = line.variant.product.name
         product = line.variant.product
-        collections = product.collections.all()
-        channel_listing = line.variant.channel_listings.get(channel=channel)
         product_type = line.variant.product.product_type
         tax_code = retrieve_tax_code_from_meta(product, default=None)
         tax_code = tax_code or retrieve_tax_code_from_meta(product_type)
@@ -246,20 +238,14 @@ def get_checkout_lines_data(
             data=data,
             quantity=line.quantity,
             amount=base_calculations.base_checkout_line_total(
-                line,
-                line.variant,
-                product,
-                collections,
-                channel,
-                channel_listing,
-                discounts,
+                line, discounts
             ).gross.amount,
             tax_code=tax_code,
             item_code=line.variant.sku,
             name=name,
         )
 
-    append_shipping_to_data(data, checkout.shipping_method, checkout.channel_id)
+    append_shipping_to_data(data, checkout.shipping_method)
     return data
 
 
@@ -308,7 +294,7 @@ def get_order_lines_data(
             name=order.discount_name,
             tax_included=True,  # Voucher should be always applied as a gross amount
         )
-    append_shipping_to_data(data, order.shipping_method, order.channel_id)
+    append_shipping_to_data(data, order.shipping_method)
     return data
 
 
@@ -319,7 +305,7 @@ def generate_request_data(
     address: Dict[str, str],
     customer_email: str,
     config: AvataxConfiguration,
-    currency: str,
+    currency=settings.DEFAULT_CURRENCY,
 ):
     company_address = Site.objects.get_current().settings.company_address
     if company_address:
@@ -442,7 +428,7 @@ def get_order_request_data(order: "Order", config: AvataxConfiguration):
         address=address.as_data() if address else {},
         customer_email=order.user_email,
         config=config,
-        currency=order.currency,
+        currency=order.total.currency,
     )
     return data
 

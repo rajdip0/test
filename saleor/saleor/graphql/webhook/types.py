@@ -2,6 +2,7 @@ import graphene
 
 from ...webhook import models
 from ...webhook.event_types import WebhookEventType
+from ..account.deprecated.types import ServiceAccount
 from ..core.connection import CountableDjangoObjectType
 from .enums import WebhookEventTypeEnum
 
@@ -29,6 +30,13 @@ class Webhook(CountableDjangoObjectType):
         description="List of webhook events.",
         required=True,
     )
+    service_account = graphene.Field(
+        ServiceAccount,
+        required=True,
+        deprecation_reason=(
+            "Use the `app` field instead. This field will be removed after 2020-07-31."
+        ),
+    )
     app = graphene.Field("saleor.graphql.app.types.App", required=True)
 
     class Meta:
@@ -41,6 +49,10 @@ class Webhook(CountableDjangoObjectType):
             "secret_key",
             "name",
         ]
+
+    @staticmethod
+    def resolve_service_account(root: models.Webhook, *_args, **_kwargs):
+        return root.app
 
     @staticmethod
     def resolve_events(root: models.Webhook, *_args, **_kwargs):

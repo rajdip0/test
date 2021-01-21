@@ -1,11 +1,9 @@
 import graphene
 
-from ...channel.models import Channel
 from ...order import OrderStatus, models
 from ...order.events import OrderEvents
 from ...order.models import OrderEvent
 from ...order.utils import sum_order_totals
-from ..channel.utils import get_default_channel_slug_or_graphql_error
 from ..utils.filters import filter_by_period
 from .enums import OrderStatusFilter
 from .types import Order
@@ -21,8 +19,6 @@ def filter_orders(qs, info, created, status):
             qs = qs.ready_to_fulfill()
         elif status == OrderStatusFilter.READY_TO_CAPTURE:
             qs = qs.ready_to_capture()
-        elif status == OrderStatusFilter.UNCONFIRMED:
-            qs = qs.ready_to_confirm()
 
     # DEPRECATED: Will be removed in Saleor 2.11, use the `filter` field instead.
     # filter orders by creation date
@@ -32,10 +28,8 @@ def filter_orders(qs, info, created, status):
     return qs
 
 
-def resolve_orders(info, created, status, channel_slug, **_kwargs):
-    qs = models.Order.objects.non_draft()
-    if channel_slug:
-        qs = qs.filter(channel__slug=str(channel_slug))
+def resolve_orders(info, created, status, **_kwargs):
+    qs = models.Order.objects.confirmed()
     return filter_orders(qs, info, created, status)
 
 
@@ -44,19 +38,10 @@ def resolve_draft_orders(info, created, **_kwargs):
     return filter_orders(qs, info, created, None)
 
 
-def resolve_orders_total(_info, period, channel_slug):
-    if channel_slug is None:
-        channel_slug = get_default_channel_slug_or_graphql_error()
-    channel = Channel.objects.filter(slug=str(channel_slug)).first()
-    if not channel:
-        return None
-    qs = (
-        models.Order.objects.non_draft()
-        .exclude(status=OrderStatus.CANCELED)
-        .filter(channel__slug=str(channel_slug))
-    )
+def resolve_orders_total(_info, period):
+    qs = models.Order.objects.confirmed().exclude(status=OrderStatus.CANCELED)
     qs = filter_by_period(qs, period, "created")
-    return sum_order_totals(qs, channel.currency_code)
+    return sum_order_totals(qs)
 
 
 def resolve_order(info, order_id):

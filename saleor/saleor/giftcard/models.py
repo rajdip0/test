@@ -1,4 +1,3 @@
-import os
 from datetime import date
 
 from django.conf import settings
@@ -35,7 +34,7 @@ class GiftCard(models.Model):
 
     currency = models.CharField(
         max_length=settings.DEFAULT_CURRENCY_CODE_LENGTH,
-        default=os.environ.get("DEFAULT_CURRENCY", "USD"),
+        default=settings.DEFAULT_CURRENCY,
     )
 
     initial_balance_amount = models.DecimalField(

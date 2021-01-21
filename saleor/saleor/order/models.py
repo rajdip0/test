@@ -16,7 +16,6 @@ from measurement.measures import Weight
 from prices import Money
 
 from ..account.models import Address
-from ..channel.models import Channel
 from ..core.models import ModelWithMetadata
 from ..core.permissions import OrderPermissions
 from ..core.taxes import zero_money, zero_taxed_money
@@ -35,11 +34,7 @@ class OrderQueryset(models.QuerySet):
         return self.confirmed().filter(checkout_token=token).first()
 
     def confirmed(self):
-        """Return orders that aren't draft or unconfirmed."""
-        return self.exclude(status__in=[OrderStatus.DRAFT, OrderStatus.UNCONFIRMED])
-
-    def non_draft(self):
-        """Return orders that aren't draft."""
+        """Return non-draft orders."""
         return self.exclude(status=OrderStatus.DRAFT)
 
     def drafts(self):
@@ -70,10 +65,6 @@ class OrderQueryset(models.QuerySet):
         qs = qs.exclude(status={OrderStatus.DRAFT, OrderStatus.CANCELED})
         return qs.distinct()
 
-    def ready_to_confirm(self):
-        """Return unconfirmed_orders."""
-        return self.filter(status=OrderStatus.UNCONFIRMED)
-
 
 class Order(ModelWithMetadata):
     created = models.DateTimeField(default=now, editable=False)
@@ -99,6 +90,7 @@ class Order(ModelWithMetadata):
 
     currency = models.CharField(
         max_length=settings.DEFAULT_CURRENCY_CODE_LENGTH,
+        default=settings.DEFAULT_CURRENCY,
     )
 
     shipping_method = models.ForeignKey(
@@ -111,11 +103,7 @@ class Order(ModelWithMetadata):
     shipping_method_name = models.CharField(
         max_length=255, null=True, default=None, blank=True, editable=False
     )
-    channel = models.ForeignKey(
-        Channel,
-        related_name="orders",
-        on_delete=models.PROTECT,
-    )
+
     shipping_price_net_amount = models.DecimalField(
         max_digits=settings.DEFAULT_MAX_DIGITS,
         decimal_places=settings.DEFAULT_DECIMAL_PLACES,
@@ -140,9 +128,6 @@ class Order(ModelWithMetadata):
         net_amount_field="shipping_price_net_amount",
         gross_amount_field="shipping_price_gross_amount",
         currency_field="currency",
-    )
-    shipping_tax_rate = models.DecimalField(
-        max_digits=5, decimal_places=4, default=Decimal("0.0")
     )
 
     token = models.CharField(max_length=36, unique=True, blank=True)
@@ -188,7 +173,6 @@ class Order(ModelWithMetadata):
     weight = MeasurementField(
         measurement=Weight, unit_choices=WeightUnits.CHOICES, default=zero_weight
     )
-    redirect_url = models.URLField(blank=True, null=True)
     objects = OrderQueryset.as_manager()
 
     class Meta:
@@ -222,7 +206,7 @@ class Order(ModelWithMetadata):
             ]
         )
         total_captured = [payment.get_captured_amount() for payment in payments]
-        total_paid = sum(total_captured, zero_taxed_money(currency=self.currency))
+        total_paid = sum(total_captured, zero_taxed_money())
         return total_paid
 
     def _index_billing_phone(self):
@@ -285,8 +269,8 @@ class Order(ModelWithMetadata):
         return any(line.is_shipping_required for line in self)
 
     def get_subtotal(self):
-        subtotal_iterator = (line.total_price for line in self)
-        return sum(subtotal_iterator, zero_taxed_money(currency=self.currency))
+        subtotal_iterator = (line.get_total() for line in self)
+        return sum(subtotal_iterator, zero_taxed_money())
 
     def get_total_quantity(self):
         return sum([line.quantity for line in self])
@@ -333,7 +317,7 @@ class Order(ModelWithMetadata):
         payment = self.get_last_payment()
         if payment:
             return payment.get_authorized_amount()
-        return zero_money(self.currency)
+        return zero_money()
 
     @property
     def total_captured(self):
@@ -344,13 +328,13 @@ class Order(ModelWithMetadata):
             ChargeStatus.PARTIALLY_REFUNDED,
         ):
             return Money(payment.captured_amount, payment.currency)
-        return zero_money(self.currency)
+        return zero_money()
 
     @property
     def total_balance(self):
         return self.total_captured - self.total.gross
 
-    def get_total_weight(self, *_args):
+    def get_total_weight(self):
         return self.weight
 
 
@@ -393,6 +377,7 @@ class OrderLine(models.Model):
 
     currency = models.CharField(
         max_length=settings.DEFAULT_CURRENCY_CODE_LENGTH,
+        default=settings.DEFAULT_CURRENCY,
     )
 
     unit_price_net_amount = models.DecimalField(
@@ -417,32 +402,8 @@ class OrderLine(models.Model):
         currency="currency",
     )
 
-    total_price_net_amount = models.DecimalField(
-        max_digits=settings.DEFAULT_MAX_DIGITS,
-        decimal_places=settings.DEFAULT_DECIMAL_PLACES,
-    )
-    total_price_net = MoneyField(
-        amount_field="total_price_net_amount",
-        currency_field="currency",
-    )
-
-    total_price_gross_amount = models.DecimalField(
-        max_digits=settings.DEFAULT_MAX_DIGITS,
-        decimal_places=settings.DEFAULT_DECIMAL_PLACES,
-    )
-    total_price_gross = MoneyField(
-        amount_field="total_price_gross_amount",
-        currency_field="currency",
-    )
-
-    total_price = TaxedMoneyField(
-        net_amount_field="total_price_net_amount",
-        gross_amount_field="total_price_gross_amount",
-        currency="currency",
-    )
-
     tax_rate = models.DecimalField(
-        max_digits=5, decimal_places=4, default=Decimal("0.0")
+        max_digits=5, decimal_places=2, default=Decimal("0.0")
     )
 
     objects = OrderLineQueryset.as_manager()
@@ -456,6 +417,9 @@ class OrderLine(models.Model):
             if self.variant_name
             else self.product_name
         )
+
+    def get_total(self):
+        return self.unit_price * self.quantity
 
     @property
     def quantity_unfulfilled(self):
@@ -519,7 +483,7 @@ class Fulfillment(ModelWithMetadata):
 
 class FulfillmentLine(models.Model):
     order_line = models.ForeignKey(
-        OrderLine, related_name="fulfillment_lines", on_delete=models.CASCADE
+        OrderLine, related_name="+", on_delete=models.CASCADE
     )
     fulfillment = models.ForeignKey(
         Fulfillment, related_name="lines", on_delete=models.CASCADE

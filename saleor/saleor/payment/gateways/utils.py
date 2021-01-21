@@ -1,6 +1,8 @@
 import warnings
 from typing import TYPE_CHECKING, List
 
+from django.conf import settings
+
 if TYPE_CHECKING:
     from ..interface import GatewayConfig
 
@@ -13,9 +15,10 @@ def get_supported_currencies(config: "GatewayConfig", gateway_name: str) -> List
     """
     supp_currencies = config.supported_currencies
     if not supp_currencies:
-        currencies: List[str] = []
+        currencies = [settings.DEFAULT_CURRENCY]
         warnings.warn(
-            f"Supported currencies not configured for {gateway_name}, "
+            f"Default currency used for {gateway_name}. "
+            "DEFAULT_CURRENCY setting is deprecated, "
             "please configure supported currencies for this gateway."
         )
     else:

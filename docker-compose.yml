@@ -2,13 +2,15 @@ version: "2"
 
 services:
   nginx:
-    build: ./nginx/
+    image: nginx:1.19.0-alpine
     ports:
       - 80:80
       - 443:443
     volumes:
-      - ./certbot/conf:/etc/nginx/ssl
-      - ./certbot/data:/var/www/certbot
+      - ./conf.d:/etc/nginx/conf.d/
+      - ./dhparam:/etc/nginx/dhparam
+      - ./certbot/conf/:/etc/nginx/ssl/
+      - ./certbot/data:/usr/share/nginx/html/letsencrypt
 
     depends_on:
       - api
@@ -20,14 +22,14 @@ services:
     image: certbot/certbot
     container_name: certbot
     volumes:
-      - ./certbot/conf:/etc/nginx/ssl
-      - ./certbot/data:/var/www/certbot
-      - ./certbot/logs:/var/log/letsencrypt
+       - ./certbot/conf/:/etc/letsencrypt
+       - ./certbot/logs/:/var/log/letsencrypt
+       - ./certbot/data:/usr/share/nginx/html/letsencrypt
     depends_on:
       - nginx
     networks:
       - saleor-backend-tier      
-    command: certonly --webroot --webroot-path=/var/www/certbot--email rajdipm65@gmail.com --agree-tos --no-eff-email --staging -d klickfresh.com  -d www.klickfresh.com      
+    command: certonly --webroot --webroot-path=/usr/share/nginx/html/letsencrypt --email rajdipm65@gmail.com --agree-tos --no-eff-email --staging -d klickfresh.com  -d www.klickfresh.com      
   api:
     ports:
       - 8000:8000

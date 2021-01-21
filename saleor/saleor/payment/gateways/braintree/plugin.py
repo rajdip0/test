@@ -18,8 +18,8 @@ GATEWAY_NAME = "Braintree"
 
 if TYPE_CHECKING:
     # flake8: noqa
-    from ...interface import CustomerSource
     from . import GatewayResponse, PaymentData, TokenConfig
+    from ...interface import CustomerSource
 
 
 def require_active_plugin(fn):

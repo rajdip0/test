@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 
 from ....product.models import Product, ProductVariant
@@ -55,24 +57,16 @@ def products_for_variant_filtering(product_type, category):
     )
     ProductVariant.objects.bulk_create(
         [
+            ProductVariant(product=products[0], sku="P1-V1", price_amount=Decimal(15),),
+            ProductVariant(product=products[0], sku="P1-V2", price_amount=Decimal(15),),
             ProductVariant(
-                product=products[0],
-                sku="P1-V1",
+                product=products[1], sku="PP1-V1", price_amount=Decimal(15), name="XL"
             ),
             ProductVariant(
-                product=products[0],
-                sku="P1-V2",
+                product=products[2], sku="PP2-V1", price_amount=Decimal(15), name="XXL"
             ),
-            ProductVariant(product=products[1], sku="PP1-V1", name="XL"),
-            ProductVariant(product=products[2], sku="PP2-V1", name="XXL"),
-            ProductVariant(
-                product=products[3],
-                sku="P2-V1",
-            ),
-            ProductVariant(
-                product=products[4],
-                sku="P3-V1",
-            ),
+            ProductVariant(product=products[3], sku="P2-V1", price_amount=Decimal(15),),
+            ProductVariant(product=products[4], sku="P3-V1", price_amount=Decimal(15),),
         ]
     )
     return products

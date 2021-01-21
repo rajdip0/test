@@ -1,17 +1,11 @@
-from urllib.parse import urljoin
-
 import graphene
-from django.conf import settings
 
 from ....product.templatetags.product_images import get_thumbnail
 from ...translations.enums import LanguageCodeEnum
 from ..enums import (
     AccountErrorCode,
     AppErrorCode,
-    AttributeErrorCode,
-    ChannelErrorCode,
     CheckoutErrorCode,
-    CollectionErrorCode,
     DiscountErrorCode,
     ExportErrorCode,
     GiftCardErrorCode,
@@ -20,7 +14,6 @@ from ..enums import (
     MenuErrorCode,
     MetadataErrorCode,
     OrderErrorCode,
-    OrderSettingsErrorCode,
     PageErrorCode,
     PaymentErrorCode,
     PermissionEnum,
@@ -31,7 +24,6 @@ from ..enums import (
     ShopErrorCode,
     StockErrorCode,
     TranslationErrorCode,
-    UploadErrorCode,
     WarehouseErrorCode,
     WebhookErrorCode,
     WeightUnitsEnum,
@@ -90,10 +82,6 @@ class AppError(Error):
     )
 
 
-class AttributeError(Error):
-    code = AttributeErrorCode(description="The error code.", required=True)
-
-
 class StaffError(AccountError):
     permissions = graphene.List(
         graphene.NonNull(PermissionEnum),
@@ -112,10 +100,6 @@ class StaffError(AccountError):
     )
 
 
-class ChannelError(Error):
-    code = ChannelErrorCode(description="The error code.", required=True)
-
-
 class CheckoutError(Error):
     code = CheckoutErrorCode(description="The error code.", required=True)
     variants = graphene.List(
@@ -125,20 +109,8 @@ class CheckoutError(Error):
     )
 
 
-class ProductWithoutVariantError(Error):
-    products = graphene.List(
-        graphene.NonNull(graphene.ID),
-        description="List of products IDs which causes the error.",
-    )
-
-
-class DiscountError(ProductWithoutVariantError):
+class DiscountError(Error):
     code = DiscountErrorCode(description="The error code.", required=True)
-    channels = graphene.List(
-        graphene.NonNull(graphene.ID),
-        description="List of channels IDs which causes the error.",
-        required=False,
-    )
 
 
 class ExportError(Error):
@@ -149,10 +121,6 @@ class MenuError(Error):
     code = MenuErrorCode(description="The error code.", required=True)
 
 
-class OrderSettingsError(Error):
-    code = OrderSettingsErrorCode(description="The error code.", required=True)
-
-
 class MetadataError(Error):
     code = MetadataErrorCode(description="The error code.", required=True)
 
@@ -160,17 +128,10 @@ class MetadataError(Error):
 class OrderError(Error):
     code = OrderErrorCode(description="The error code.", required=True)
     warehouse = graphene.ID(
-        description="Warehouse ID which causes the error.",
-        required=False,
+        description="Warehouse ID which causes the error.", required=False,
     )
     order_line = graphene.ID(
-        description="Order line ID which causes the error.",
-        required=False,
-    )
-    variants = graphene.List(
-        graphene.NonNull(graphene.ID),
-        description="List of product variants that are associated with the error",
-        required=False,
+        description="Order line ID which causes the error.", required=False,
     )
 
 
@@ -199,31 +160,6 @@ class ProductError(Error):
         description="List of attributes IDs which causes the error.",
         required=False,
     )
-    values = graphene.List(
-        graphene.NonNull(graphene.ID),
-        description="List of attribute values IDs which causes the error.",
-        required=False,
-    )
-
-
-class CollectionError(ProductWithoutVariantError):
-    code = CollectionErrorCode(description="The error code.", required=True)
-
-
-class ProductChannelListingError(ProductError):
-    channels = graphene.List(
-        graphene.NonNull(graphene.ID),
-        description="List of channels IDs which causes the error.",
-        required=False,
-    )
-
-
-class CollectionChannelListingError(ProductError):
-    channels = graphene.List(
-        graphene.NonNull(graphene.ID),
-        description="List of channels IDs which causes the error.",
-        required=False,
-    )
 
 
 class BulkProductError(ProductError):
@@ -233,11 +169,6 @@ class BulkProductError(ProductError):
     warehouses = graphene.List(
         graphene.NonNull(graphene.ID),
         description="List of warehouse IDs which causes the error.",
-        required=False,
-    )
-    channels = graphene.List(
-        graphene.NonNull(graphene.ID),
-        description="List of channel IDs which causes the error.",
         required=False,
     )
 
@@ -253,25 +184,10 @@ class ShippingError(Error):
         description="List of warehouse IDs which causes the error.",
         required=False,
     )
-    channels = graphene.List(
-        graphene.NonNull(graphene.ID),
-        description="List of channels IDs which causes the error.",
-        required=False,
-    )
 
 
 class PageError(Error):
     code = PageErrorCode(description="The error code.", required=True)
-    attributes = graphene.List(
-        graphene.NonNull(graphene.ID),
-        description="List of attributes IDs which causes the error.",
-        required=False,
-    )
-    values = graphene.List(
-        graphene.NonNull(graphene.ID),
-        description="List of attribute values IDs which causes the error.",
-        required=False,
-    )
 
 
 class PaymentError(Error):
@@ -296,10 +212,6 @@ class BulkStockError(ProductError):
     )
 
 
-class UploadError(Error):
-    code = UploadErrorCode(description="The error code.", required=True)
-
-
 class WarehouseError(Error):
     code = WarehouseErrorCode(description="The error code.", required=True)
 
@@ -308,7 +220,7 @@ class WebhookError(Error):
     code = WebhookErrorCode(description="The error code.", required=True)
 
 
-class WishlistError(ProductWithoutVariantError):
+class WishlistError(Error):
     code = WishlistErrorCode(description="The error code.", required=True)
 
 
@@ -350,17 +262,6 @@ class Image(graphene.ObjectType):
             url = image.url
         url = info.context.build_absolute_uri(url)
         return Image(url, alt)
-
-
-class File(graphene.ObjectType):
-    url = graphene.String(required=True, description="The URL of the file.")
-    content_type = graphene.String(
-        required=False, description="Content type of the file."
-    )
-
-    @staticmethod
-    def resolve_url(root, info):
-        return info.context.build_absolute_uri(urljoin(settings.MEDIA_URL, root.url))
 
 
 class PriceRangeInput(graphene.InputObjectType):

@@ -38,16 +38,17 @@ def test_get_supported_currencies(
     assert currencies == expected_currencies
 
 
-def test_get_supported_currencies_not_configured(gateway_config):
+def test_get_supported_currencies_default_currency(gateway_config):
     # when
     with warnings.catch_warnings(record=True) as warns:
         currencies = get_supported_currencies(gateway_config, "Test")
 
         expected_warning = (
-            "Supported currencies not configured for Test, "
+            "Default currency used for Test. "
+            "DEFAULT_CURRENCY setting is deprecated, "
             "please configure supported currencies for this gateway."
         )
         assert any([str(warning.message) == expected_warning for warning in warns])
 
     # then
-    assert currencies == []
+    assert currencies == ["USD"]

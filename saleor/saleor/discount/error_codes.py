@@ -8,5 +8,3 @@ class DiscountErrorCode(Enum):
     NOT_FOUND = "not_found"
     REQUIRED = "required"
     UNIQUE = "unique"
-    CANNOT_MANAGE_PRODUCT_WITHOUT_VARIANT = "cannot_manage_product_without_variant"
-    DUPLICATED_INPUT_ITEM = "duplicated_input_item"

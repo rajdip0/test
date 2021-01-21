@@ -5,6 +5,7 @@ import pytest
 from django.test import override_settings
 
 from ....demo.views import EXAMPLE_QUERY
+from ...product.types import Product
 from ...tests.fixtures import (
     ACCESS_CONTROL_ALLOW_CREDENTIALS,
     ACCESS_CONTROL_ALLOW_HEADERS,
@@ -15,10 +16,10 @@ from ...tests.fixtures import (
 from ...tests.utils import get_graphql_content, get_graphql_content_from_response
 
 
-def test_batch_queries(category, product, api_client, channel_USD):
+def test_batch_queries(category, product, api_client):
     query_product = """
-        query GetProduct($id: ID!, $channel: String) {
-            product(id: $id, channel: $channel) {
+        query GetProduct($id: ID!) {
+            product(id: $id) {
                 name
             }
         }
@@ -33,17 +34,11 @@ def test_batch_queries(category, product, api_client, channel_USD):
     data = [
         {
             "query": query_category,
-            "variables": {
-                "id": graphene.Node.to_global_id("Category", category.pk),
-                "channel": channel_USD.slug,
-            },
+            "variables": {"id": graphene.Node.to_global_id("Category", category.pk)},
         },
         {
             "query": query_product,
-            "variables": {
-                "id": graphene.Node.to_global_id("Product", product.pk),
-                "channel": channel_USD.slug,
-            },
+            "variables": {"id": graphene.Node.to_global_id("Product", product.pk)},
         },
     ]
     response = api_client.post(data)
@@ -270,33 +265,18 @@ def test_validation_errors_query_do_not_get_logged(
     assert graphql_log_handler.messages == []
 
 
-@mock.patch("saleor.graphql.product.schema.resolve_collection_by_id")
+@mock.patch.object(Product, "get_node")
 def test_unexpected_exceptions_are_logged_in_their_own_logger(
-    mocked_resolve_collection_by_id,
-    staff_api_client,
-    graphql_log_handler,
-    permission_manage_products,
-    published_collection,
-    channel_USD,
+    mocked_get_node, staff_api_client, graphql_log_handler, permission_manage_products
 ):
-    def bad_mocked_resolve_collection_by_id(info, id, channel, requestor):
-        raise NotImplementedError(info, id, channel, requestor)
+    def bad_get_node(info, pk):
+        raise NotImplementedError(info, pk)
 
-    mocked_resolve_collection_by_id.side_effect = bad_mocked_resolve_collection_by_id
+    mocked_get_node.side_effect = bad_get_node
 
     staff_api_client.user.user_permissions.add(permission_manage_products)
-    variables = {
-        "id": graphene.Node.to_global_id("Collection", published_collection.pk),
-        "channel": channel_USD.slug,
-    }
     response = staff_api_client.post_graphql(
-        """
-        query($id: ID!,$channel:String) {
-            collection(id: $id,channel:$channel) {
-                name
-            }
-        }""",
-        variables=variables,
+        '{ product(id: "UHJvZHVjdDoxMg==") { name } }'
     )
 
     assert response.status_code == 200

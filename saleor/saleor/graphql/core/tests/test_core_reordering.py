@@ -1,9 +1,9 @@
 import pytest
 
-from ....attribute import models as attribute_models
+from ....product import models
 from ..utils.reordering import perform_reordering
 
-SortedModel = attribute_models.AttributeValue
+SortedModel = models.AttributeValue
 
 
 def _sorted_by_order(items):
@@ -18,7 +18,7 @@ def _get_sorted_map():
 
 @pytest.fixture
 def dummy_attribute():
-    return attribute_models.Attribute.objects.create(name="Dummy")
+    return models.Attribute.objects.create(name="Dummy")
 
 
 @pytest.fixture
@@ -266,19 +266,18 @@ def test_reordering_concurrently(dummy_attribute, assert_num_queries):
         perform_reordering(qs, operations)
 
     assert ctx[0]["sql"] == (
-        'SELECT "attribute_attributevalue"."id", '
-        '"attribute_attributevalue"."sort_order" '
-        'FROM "attribute_attributevalue" '
+        'SELECT "product_attributevalue"."id", "product_attributevalue"."sort_order" '
+        'FROM "product_attributevalue" '
         "ORDER BY "
-        '"attribute_attributevalue"."sort_order" ASC NULLS LAST, '
-        '"attribute_attributevalue"."id" ASC FOR UPDATE'
+        '"product_attributevalue"."sort_order" ASC NULLS LAST, '
+        '"product_attributevalue"."id" ASC FOR UPDATE'
     )
     assert ctx[1]["sql"] == (
-        'UPDATE "attribute_attributevalue" '
-        'SET "sort_order" = (CASE WHEN ("attribute_attributevalue"."id" = 1) '
-        'THEN 1 WHEN ("attribute_attributevalue"."id" = 2) '
+        'UPDATE "product_attributevalue" '
+        'SET "sort_order" = (CASE WHEN ("product_attributevalue"."id" = 1) '
+        'THEN 1 WHEN ("product_attributevalue"."id" = 2) '
         "THEN 0 ELSE NULL END)::integer "
-        'WHERE "attribute_attributevalue"."id" IN (1, 2)'
+        'WHERE "product_attributevalue"."id" IN (1, 2)'
     )
 
 
@@ -310,9 +309,9 @@ def test_reordering_deleted_node_from_concurrent(dummy_attribute, assert_num_que
         perform_reordering(qs, operations)
 
     assert ctx[1]["sql"] == (
-        'UPDATE "attribute_attributevalue" '
-        'SET "sort_order" = (CASE WHEN ("attribute_attributevalue"."id" = 1) '
-        'THEN 1 WHEN ("attribute_attributevalue"."id" = 2) '
+        'UPDATE "product_attributevalue" '
+        'SET "sort_order" = (CASE WHEN ("product_attributevalue"."id" = 1) '
+        'THEN 1 WHEN ("product_attributevalue"."id" = 2) '
         "THEN 0 ELSE NULL END)::integer "
-        'WHERE "attribute_attributevalue"."id" IN (1, 2)'
+        'WHERE "product_attributevalue"."id" IN (1, 2)'
     )
