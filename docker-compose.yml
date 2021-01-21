@@ -57,29 +57,34 @@ services:
       - DASHBOARD_URL=http://localhost:9000/
 
 
-  certbot:
-    image: certbot/certbot
-    container_name: certbot
-    volumes:
-       - ./certbot/conf/:/etc/letsencrypt
-       - ./certbot/logs/:/var/log/letsencrypt
-       - ./certbot/data:/usr/share/nginx/html/letsencrypt
-    depends_on:
-      - nginx
-    networks:
-      - saleor-backend-tier      
-    command: certonly --webroot --webroot-path=/usr/share/nginx/html/letsencrypt --email rajdipm65@gmail.com --agree-tos --no-eff-email --staging -d klickfresh.com  -d www.klickfresh.com
+  # certbot:
+  #   image: certbot/certbot
+  #   container_name: certbot
+  #   volumes:
+  #      - ./certbot/conf/:/etc/letsencrypt
+  #      - ./certbot/logs/:/var/log/letsencrypt
+  #      - ./certbot/data:/usr/share/nginx/html/letsencrypt
+  #   depends_on:
+  #     - nginx
+  #   networks:
+  #     - saleor-backend-tier      
+  #   command: certonly --webroot --webroot-path=/usr/share/nginx/html/letsencrypt --email rajdipm65@gmail.com --agree-tos --no-eff-email --staging -d klickfresh.com  -d www.klickfresh.com
    
   nginx:
-    image: nginx:1.19.0-alpine
+    container_name: nginx
+    build:
+      context: ./nginx
+      args:
+        - CERTBOT_EMAIL=rajdipm65@gmail.com
+        - DOMAIN_LIST=klickfresh.com,www.klickfresh.com
     ports:
       - 80:80
       - 443:443
-    volumes:
-      - ./conf.d:/etc/nginx/conf.d/
-      - ./dhparam:/etc/nginx/dhparam
-      - ./certbot/conf/:/etc/nginx/ssl/
-      - ./certbot/data:/usr/share/nginx/html/letsencrypt
+    # volumes:
+    #   - ./conf.d:/etc/nginx/conf.d/
+    #   - ./dhparam:/etc/nginx/dhparam
+    #   - ./certbot/conf/:/etc/nginx/ssl/
+    #   - ./certbot/data:/usr/share/nginx/html/letsencrypt
 
     depends_on:
       - api
