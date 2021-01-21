@@ -4,8 +4,8 @@ RUN rm /etc/nginx/conf.d/default.conf
 COPY nginx.conf /etc/nginx/conf.d
 ARG CERTBOT_EMAIL=info@domain.com
 ARG DOMAIN_LIST
-RUN  apt-get update \
-      && apt-get install -y cron bash wget \
+RUN  apt update \
+      && apt install -y cron bash wget \
       && wget -O /usr/local/bin/certbot-auto https://dl.eff.org/certbot-auto \
       && chown root /usr/local/bin/certbot-auto \
       && chmod 0755 /usr/local/bin/certbot-auto \
